@@ -25,6 +25,8 @@ const client = new MongoClient(uri, {
 const employeeCollection = client.db('employeeDB').collection('employees');
 const paymentCollection = client.db('employeeDB').collection('payment');
 const workCollection = client.db('employeeDB').collection('worksheet');
+const serviceCollection = client.db('employeeDB').collection('service');
+
 // middleware
 const verifyToken = (req, res, next) => {
   console.log('verify token', req.headers.authorization);
@@ -44,15 +46,6 @@ const verifyToken = (req, res, next) => {
   });
 };
 
-// const verifyAdmin = async (req, res, next) => {
-//   const user = req.user;
-//   const query = { email: user?.email };
-//   const result = await employeeCollection.findOne(query);
-//   if (!result || result?.role !== 'admin') {
-//     return res.status(401).send({ message: 'unauthorized access' });
-//   }
-//   next();
-// };
 const verifyAdmin = async (req, res, next) => {
   const email = req?.decoded?.email;
   console.log('email', email);
@@ -64,24 +57,27 @@ const verifyAdmin = async (req, res, next) => {
   }
   next();
 };
-
 const verifyHR = async (req, res, next) => {
-  const user = req.user;
-  const query = { email: user?.email };
+  const email = req?.decoded?.email;
+  console.log('email', email);
+  const query = { email: email };
   const result = await employeeCollection.findOne(query);
-  if (!result || result?.role !== 'hr') {
-    return res.status(401).send({ message: 'unauthorized access' });
+  const isHr = user?.role === 'hr';
+  if (!isHr) {
+    return res.status(403).send({ message: 'forbidden access' });
   }
   next();
 };
-
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-
+    // get service related api
+    app.get('/service', async (req, res) => {
+      const result = await serviceCollection.find().toArray();
+      res.send(result);
+    });
     app.post('/jwt', async (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.SECRET_ACCESS_TOKEN, {
@@ -105,9 +101,7 @@ async function run() {
     });
 
     // get all employee
-    // app.get('/employees', async (req, res) => {
-    //   const result
-    // })
+
     // get all employee for Admin
 
     app.get('/employee/admin/:email', verifyToken, async (req, res) => {
@@ -125,6 +119,22 @@ async function run() {
         admin = user?.role === 'admin';
       }
       res.send({ admin });
+    });
+    app.get('/employee/hr/:email', verifyToken, async (req, res) => {
+      const email = req.params.email;
+      console.log('email', email);
+
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: 'forbidden access' });
+      }
+
+      const query = { email: email };
+      const user = await employeeCollection.findOne(query);
+      let hr = false;
+      if (user) {
+        hr = user?.role === 'hr';
+      }
+      res.send({ hr });
     });
 
     app.get(
