@@ -1,9 +1,10 @@
 const express = require('express');
 const app = express();
+require('dotenv').config();
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-require('dotenv').config();
+
 const stripe = require('stripe').Stripe(process.env.PAYMENT_SECRET_KEY);
 const port = process.env.port || 5000;
 
@@ -11,15 +12,29 @@ app.use(cors());
 
 app.use(express.json());
 
+const uri = `mongodb+srv://${process.env.EMPLOYEE_DB}:${process.env.EMPLOYEE_PASS}@cluster0.hybcmzi.mongodb.net/?retryWrites=true&w=majority`;
+
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  },
+});
+
+const employeeCollection = client.db('employeeDB').collection('employees');
+const paymentCollection = client.db('employeeDB').collection('payment');
+const workCollection = client.db('employeeDB').collection('worksheet');
 // middleware
 const verifyToken = (req, res, next) => {
   console.log('verify token', req.headers.authorization);
   if (!req.headers.authorization) {
     return res.status(401).send({ message: 'unauthorized access' });
   }
-
+  // console.log('ghhghghghghg', req.headers.authorization);
   const token = req.headers.authorization.split(' ')[1];
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+  // console.log('tttttttt', token);
+  jwt.verify(token, process.env.SECRET_ACCESS_TOKEN, (err, decoded) => {
     if (err) {
       return res.status(401).send({ message: 'unauthorized access' });
     }
@@ -29,42 +44,43 @@ const verifyToken = (req, res, next) => {
   });
 };
 
+// const verifyAdmin = async (req, res, next) => {
+//   const user = req.user;
+//   const query = { email: user?.email };
+//   const result = await employeeCollection.findOne(query);
+//   if (!result || result?.role !== 'admin') {
+//     return res.status(401).send({ message: 'unauthorized access' });
+//   }
+//   next();
+// };
 const verifyAdmin = async (req, res, next) => {
-  const user = req.user;
-  const query = { email: user?.email };
-  const result = await userCollection.findOne(query);
-  if (!result || result?.role !== 'admin') {
-    return res.status(401).send({ message: 'unauthorized access' });
+  const email = req?.decoded?.email;
+  console.log('email', email);
+  const query = { email: email };
+  const user = await employeeCollection.findOne(query);
+  const isAdmin = user?.role === 'admin';
+  if (!isAdmin) {
+    return res.status(403).send({ message: 'forbidden access' });
   }
   next();
 };
+
 const verifyHR = async (req, res, next) => {
   const user = req.user;
   const query = { email: user?.email };
-  const result = await userCollection.findOne(query);
+  const result = await employeeCollection.findOne(query);
   if (!result || result?.role !== 'hr') {
     return res.status(401).send({ message: 'unauthorized access' });
   }
   next();
 };
 
-const uri = `mongodb+srv://${process.env.EMPLOYEE_DB}:${process.env.EMPLOYEE_PASS}@cluster0.hybcmzi.mongodb.net/?retryWrites=true&w=majority`;
-
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  },
-});
 
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-    const employeeCollection = client.db('employeeDB').collection('employees');
-    const paymentCollection = client.db('employeeDB').collection('payment');
 
     app.post('/jwt', async (req, res) => {
       const user = req.body;
@@ -93,12 +109,40 @@ async function run() {
     //   const result
     // })
     // get all employee for Admin
-    app.get('/employees/admin', async (req, res) => {
-      const verified = req.body;
-      const query = { verified: true };
-      const result = await employeeCollection.find(query).toArray();
-      res.send(result);
+
+    app.get('/employee/admin/:email', verifyToken, async (req, res) => {
+      const email = req.params.email;
+      console.log('email', email);
+
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: 'forbidden access' });
+      }
+
+      const query = { email: email };
+      const user = await employeeCollection.findOne(query);
+      let admin = false;
+      if (user) {
+        admin = user?.role === 'admin';
+      }
+      res.send({ admin });
     });
+
+    app.get(
+      '/employees/employeeFind/:email',
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const email = req.params.email;
+        if (email !== req.decoded.email) {
+          return res.status(403).send({ message: 'forbidden access' });
+        }
+        const verified = req.body;
+        console.log(verified);
+        const query = { verified: true };
+        const result = await employeeCollection.find(query).toArray();
+        res.send(result);
+      }
+    );
     // get employee for hr
     app.get('/employees/hr', async (req, res) => {
       // const email = req.params.email;
@@ -191,6 +235,24 @@ async function run() {
       //   return res.status(403).send({ message: 'forbidden access' });
       // }
       const result = await paymentCollection.find({ email }).toArray();
+      res.send(result);
+    });
+
+    // worksheet post by employee
+    app.post('/worksheet', async (req, res) => {
+      const work = req.body;
+      const result = await workCollection.insertOne(work);
+      res.send(result);
+    });
+
+    app.get('/worksheet', async (req, res) => {
+      // const email = req.params.email;
+      const result = await workCollection.find().toArray();
+      res.send(result);
+    });
+    app.get('/worksheet/:email', async (req, res) => {
+      const email = req.params.email;
+      const result = await workCollection.find({ email }).toArray();
       res.send(result);
     });
     // Send a ping to confirm a successful connection
