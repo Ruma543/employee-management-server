@@ -238,12 +238,32 @@ async function run() {
       const result = await paymentCollection.find().toArray();
       res.send(result);
     });
-    // payment get by email
+    // payment get by email   1st ta eita
     app.get('/payment/:email', async (req, res) => {
       const email = req.params.email;
+      //
+      // const query = req.query;
+      // const page = query.page;
+      // const pageNumber = parseInt(page);
+      // const perPage = 5;
+      // const skip = pageNumber * perPage;
+      // const payment = paymentCollection
+      //   .find({ email })
+      //   .skip(skip)
+      //   .limit(perPage);
+      // const result = await payment.toArray();
+      // const paymentCount = await paymentCollection.countDocuments();
+      // res.send({ result, paymentCount });
+      // const page = parseInt(req.query.page);
+      // const limit = parseInt(req.query.limit);
+      // const skip = (page - 1) * limit;
+
+      // const cursor = paymentCollection.find().skip(skip).limit(limit);
+
       // if (email !== req.decoded.email) {
       //   return res.status(403).send({ message: 'forbidden access' });
       // }
+      //
       const result = await paymentCollection.find({ email }).toArray();
       res.send(result);
     });
