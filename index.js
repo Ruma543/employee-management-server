@@ -26,6 +26,7 @@ const employeeCollection = client.db('employeeDB').collection('employees');
 const paymentCollection = client.db('employeeDB').collection('payment');
 const workCollection = client.db('employeeDB').collection('worksheet');
 const serviceCollection = client.db('employeeDB').collection('service');
+const reviewCollection = client.db('employeeDB').collection('userReviews');
 
 // middleware
 const verifyToken = (req, res, next) => {
@@ -283,6 +284,11 @@ async function run() {
     app.get('/worksheet/:email', async (req, res) => {
       const email = req.params.email;
       const result = await workCollection.find({ email }).toArray();
+      res.send(result);
+    });
+    // get user reviews
+    app.get('/userReviews', async (req, res) => {
+      const result = await reviewCollection.find().toArray();
       res.send(result);
     });
     // Send a ping to confirm a successful connection
