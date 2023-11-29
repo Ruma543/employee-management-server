@@ -102,11 +102,14 @@ async function run() {
       res.send(result);
     });
 
-    // get all employee
+    // get all employee for show home page not secure
+    app.get('/employees', async (req, res) => {
+      const result = await employeeCollection.find().toArray();
+      res.send(result);
+    });
+    // find  Admin
 
-    // get all employee for Admin
-
-    app.get('/employee/admin/:email', verifyToken, async (req, res) => {
+    app.get('/employees/admin/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
       console.log('email', email);
 
@@ -122,7 +125,7 @@ async function run() {
       }
       res.send({ admin });
     });
-    app.get('/employee/hr/:email', verifyToken, async (req, res) => {
+    app.get('/employees/hr/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
       console.log('email', email);
 
@@ -156,7 +159,7 @@ async function run() {
       }
     );
     // get employee for hr
-    app.get('/employees/hr', async (req, res) => {
+    app.get('/employees/hr', verifyToken, async (req, res) => {
       // const email = req.params.email;
       // console.log('email', email);
 
@@ -243,29 +246,18 @@ async function run() {
     // payment get by email   1st ta eita
     app.get('/payment/:email', async (req, res) => {
       const email = req.params.email;
-      //
       // const query = req.query;
       // const page = query.page;
       // const pageNumber = parseInt(page);
       // const perPage = 5;
       // const skip = pageNumber * perPage;
-      // const payment = paymentCollection
+      // const payments = paymentCollection
       //   .find({ email })
       //   .skip(skip)
       //   .limit(perPage);
-      // const result = await payment.toArray();
+      // const result = await payments.toArray();
       // const paymentCount = await paymentCollection.countDocuments();
       // res.send({ result, paymentCount });
-      // const page = parseInt(req.query.page);
-      // const limit = parseInt(req.query.limit);
-      // const skip = (page - 1) * limit;
-
-      // const cursor = paymentCollection.find().skip(skip).limit(limit);
-
-      // if (email !== req.decoded.email) {
-      //   return res.status(403).send({ message: 'forbidden access' });
-      // }
-      //
       const result = await paymentCollection.find({ email }).toArray();
       res.send(result);
     });
@@ -311,3 +303,27 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
   console.log(`employee server is running port ${port}`);
 });
+
+//
+// const query = req.query;
+// const page = query.page;
+// const pageNumber = parseInt(page);
+// const perPage = 5;
+// const skip = pageNumber * perPage;
+// const payment = paymentCollection
+//   .find({ email })
+//   .skip(skip)
+//   .limit(perPage);
+// const result = await payment.toArray();
+// const paymentCount = await paymentCollection.countDocuments();
+// res.send({ result, paymentCount });
+// const page = parseInt(req.query.page);
+// const limit = parseInt(req.query.limit);
+// const skip = (page - 1) * limit;
+
+// const cursor = paymentCollection.find().skip(skip).limit(limit);
+
+// if (email !== req.decoded.email) {
+//   return res.status(403).send({ message: 'forbidden access' });
+// }
+//
