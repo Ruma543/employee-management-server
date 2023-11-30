@@ -8,7 +8,17 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const stripe = require('stripe').Stripe(process.env.PAYMENT_SECRET_KEY);
 const port = process.env.port || 5000;
 
-app.use(cors());
+// app.use(cors());
+app.use(
+  cors({
+    origin: [
+      'https://employee-management-client.web.app',
+      'http://localhost:5173',
+      'http://localhost:5174',
+    ],
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 
@@ -246,22 +256,38 @@ async function run() {
     // payment get by email   1st ta eita
     app.get('/payment/:email', async (req, res) => {
       const email = req.params.email;
-      // const query = req.query;
-      // const page = query.page;
-      // const pageNumber = parseInt(page);
-      // const perPage = 5;
-      // const skip = pageNumber * perPage;
-      // const payments = paymentCollection
-      //   .find({ email })
-      //   .skip(skip)
-      //   .limit(perPage);
-      // const result = await payments.toArray();
-      // const paymentCount = await paymentCollection.countDocuments();
-      // res.send({ result, paymentCount });
+      //
+      let sortObj = {};
+
+      const sortField = req.query.sortField;
+      const sortOrder = req.query.sortOrder;
+      const page = parseInt(req.query.page);
+      const limit = parseInt(req.query.limit);
+      // const skip = (page - 1) * limit;
+      const skip = Math.max((page - 1) * limit, 0);
+
+      if (sortField && sortOrder) {
+        sortObj[sortField] = sortOrder;
+      }
+      const cursor = paymentCollection
+        .find({ email })
+        .skip(skip)
+        .limit(limit)
+        .sort({ date: sortOrder === 'asc' ? 1 : -1 });
+      // .sort(sortObj);
+      const result = await cursor.toArray();
+      const total = await paymentCollection.countDocuments({ email });
+      res.send({ total, result });
+      //
+      // const result = await paymentCollection.find({ email }).toArray();
+      // res.send(result);
+    });
+
+    app.get('/payment/s/:email', async (req, res) => {
+      const email = req.params.email;
       const result = await paymentCollection.find({ email }).toArray();
       res.send(result);
     });
-
     // worksheet post by employee
     app.post('/worksheet', async (req, res) => {
       const work = req.body;
